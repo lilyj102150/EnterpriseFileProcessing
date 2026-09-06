@@ -1,0 +1,143 @@
+name: enterprise-dhi-stack
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-security-defaults: &security-defaults
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  postgres:
+    image: dhi.io/postgres:18
+    container_name: postgres
+    restart: unless-stopped
+    <<: *security-defaults
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      TZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+        reservations:
+          cpus: "0.5"
+          memory: 512m
+    logging: *default-logging
+
+  # redis:
+  #   image: dhi.io/redis:8-debian13
+  #   container_name: redis
+  #   restart: unless-stopped
+  #   <<: *security-defaults
+  #   command: >-
+  #     redis-server
+  #     --user default off
+  #     --user redis on >password ~* &* +@all
+  #     --appendonly yes
+  #     --appendfsync everysec
+  #     --maxmemory 512mb
+  #     --maxmemory-policy allkeys-lru
+  #     --rename-command FLUSHALL ""
+  #     --rename-command FLUSHDB ""
+  #   volumes:
+  #     - redis-data:/data
+  #   ports:
+  #     - "127.0.0.1:6379:6379"
+  #   networks:
+  #     - data-net
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "--no-auth-warning", "--user", "redis", "-a", "password", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "1.0"
+  #         memory: 1g
+  #       reservations:
+  #         cpus: "0.25"
+  #         memory: 256m
+  #   logging: *default-logging
+
+  # kafka:
+  #   image: dhi.io/kafka:4.3-debian13
+  #   container_name: kafka
+  #   restart: unless-stopped
+  #   <<: *security-defaults
+  #   environment:
+  #     KAFKA_NODE_ID: 1
+  #     KAFKA_PROCESS_ROLES: broker,controller
+  #     KAFKA_LISTENERS: SASL_PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+  #     KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://kafka:9092
+  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+  #     KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+  #     KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+  #     KAFKA_LISTENER_NAME_SASL__PLAINTEXT_PLAIN_SASL_JAAS_CONFIG: >-
+  #       org.apache.kafka.common.security.plain.PlainLoginModule required
+  #       username="kafka" password="password" user_kafka="password";
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  #     KAFKA_NUM_PARTITIONS: 6
+  #     KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #     KAFKA_LOG_RETENTION_HOURS: 168
+  #   volumes:
+  #     - kafka-data:/opt/kafka/logs
+  #   ports:
+  #     - "127.0.0.1:9092:9092"
+  #   networks:
+  #     - data-net
+  #   healthcheck:
+  #     test: >-
+  #       printf 'security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="kafka" password="password";\n' > /tmp/client.properties &&
+  #       /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 --command-config /tmp/client.properties >/dev/null 2>&1 || exit 1
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 40s
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "2.0"
+  #         memory: 2g
+  #       reservations:
+  #         cpus: "0.5"
+  #         memory: 1g
+  #   logging: *default-logging
+
+networks:
+  data-net:
+    name: enterprise-data-net
+    driver: bridge
+
+volumes:
+  postgres-data:
+  # redis-data:
+  # kafka-data:

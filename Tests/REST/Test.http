@@ -1,0 +1,170 @@
+@baseUrl = https://localhost:7047
+@tenantToken = replace-me
+@uploadId = replace-me
+@jobId = replace-me
+@fileId = replace-me
+
+### Live health
+GET {{baseUrl}}/health/live
+Accept: application/json
+
+### Ready health
+GET {{baseUrl}}/health/ready
+Accept: application/json
+
+### Create upload session
+POST {{baseUrl}}/api/v1/uploads
+Authorization: Bearer {{tenantToken}}
+Idempotency-Key: upload-{{$random.uuid}}
+Content-Type: application/json
+
+{
+  "fileName": "master.xlsx",
+  "contentLength": 1048576,
+  "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "sha256": "replace-me"
+}
+
+### Get upload
+GET {{baseUrl}}/api/v1/uploads/{{uploadId}}
+Authorization: Bearer {{tenantToken}}
+Accept: application/json
+
+### Complete upload
+POST {{baseUrl}}/api/v1/uploads/{{uploadId}}/complete
+Authorization: Bearer {{tenantToken}}
+
+### Stream small upload content
+PUT {{baseUrl}}/api/v1/uploads/{{uploadId}}/content
+Authorization: Bearer {{tenantToken}}
+Content-Type: application/octet-stream
+
+< ./fixtures/sample.xlsx
+
+### Abort upload
+DELETE {{baseUrl}}/api/v1/uploads/{{uploadId}}
+Authorization: Bearer {{tenantToken}}
+
+### Create import
+POST {{baseUrl}}/api/v1/imports
+Authorization: Bearer {{tenantToken}}
+Idempotency-Key: import-{{$random.uuid}}
+Content-Type: application/json
+
+{
+  "uploadId": "{{uploadId}}",
+  "templateCode": "master",
+  "validateOnly": false
+}
+
+### Create export
+POST {{baseUrl}}/api/v1/exports
+Authorization: Bearer {{tenantToken}}
+Idempotency-Key: export-{{$random.uuid}}
+Content-Type: application/json
+
+{
+  "exportCode": "orders",
+  "templateCode": null
+}
+
+### Create report
+POST {{baseUrl}}/api/v1/reports
+Authorization: Bearer {{tenantToken}}
+Idempotency-Key: report-{{$random.uuid}}
+Content-Type: application/json
+
+{
+  "reportCode": "orders-summary",
+  "templateCode": null
+}
+
+### Get job
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}
+Authorization: Bearer {{tenantToken}}
+Accept: application/json
+
+### Get job progress
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}/progress
+Authorization: Bearer {{tenantToken}}
+Accept: application/json
+
+### Subscribe to progress events
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}/progress/events
+Authorization: Bearer {{tenantToken}}
+Accept: text/event-stream
+
+### Cancel job
+POST {{baseUrl}}/api/v1/jobs/{{jobId}}/cancel
+Authorization: Bearer {{tenantToken}}
+Content-Type: application/json
+
+{
+  "reason": "user_requested"
+}
+
+### Artifact metadata placeholder
+GET {{baseUrl}}/api/v1/files/{{fileId}}
+Authorization: Bearer {{tenantToken}}
+Accept: application/json
+
+### Artifact content placeholder
+GET {{baseUrl}}/api/v1/files/{{fileId}}/content
+Authorization: Bearer {{tenantToken}}
+
+### Validation error
+POST {{baseUrl}}/api/v1/uploads
+Content-Type: application/json
+
+{
+  "fileName": "",
+  "contentLength": 0,
+  "contentType": "application/octet-stream",
+  "sha256": ""
+}
+
+### Not found
+GET {{baseUrl}}/api/v1/jobs/00000000-0000-0000-0000-000000000000
+
+### Unauthorized placeholder
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}
+
+### Forbidden placeholder
+GET {{baseUrl}}/api/v1/admin/queue
+Authorization: Bearer {{tenantToken}}
+
+### Idempotency replay placeholder
+POST {{baseUrl}}/api/v1/imports
+Authorization: Bearer {{tenantToken}}
+Idempotency-Key: replay-key
+Content-Type: application/json
+
+{
+  "uploadId": "{{uploadId}}",
+  "templateCode": "master",
+  "validateOnly": false
+}
+
+### Idempotency conflict placeholder
+POST {{baseUrl}}/api/v1/imports
+Authorization: Bearer {{tenantToken}}
+Idempotency-Key: replay-key
+Content-Type: application/json
+
+{
+  "uploadId": "00000000-0000-0000-0000-000000000000",
+  "templateCode": "other",
+  "validateOnly": true
+}
+
+### Quota rejection placeholder
+POST {{baseUrl}}/api/v1/uploads
+Authorization: Bearer {{tenantToken}}
+Content-Type: application/json
+
+{
+  "fileName": "too-large.xlsx",
+  "contentLength": 2147483649,
+  "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "sha256": "replace-me"
+}
